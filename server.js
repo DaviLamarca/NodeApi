@@ -1,6 +1,8 @@
 import http from 'http';
 import url from 'url';
 import fs from 'fs';
+import { Buffer } from 'buffer';
+import { buffer } from 'stream/consumers';
 
 const server = http.createServer((req, res) => {
     const parse = url.parse(req.url, true);
@@ -16,19 +18,49 @@ const server = http.createServer((req, res) => {
         res.end(JSON.stringify({ msg: "Tudo certo, servidor de pé", objeto: numeros }));
         return;
     }
+    if (method === "GET" && pathname === "/cat") {
+        (async function cat() {
+            let resposta = await fetch("https://cataas.com/cat")
+            let arrayBuffer = await resposta.arrayBuffer();
+            let buffer = Buffer.from(arrayBuffer)
 
-    if (method === "POST" && pathname === "/cadastro") {
-        let bodyPessoa = "";
-        req.on('data', chunk => { bodyPessoa += chunk.toString(); });
-        req.on('end', () => {
-            let pessoa = JSON.parse(bodyPessoa);
-            res.writeHead(200, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify(pessoa));
+            res.writeHead(200, { 'Content-Type': 'image/jpeg' });
+            res.end(buffer);
+        })()
+        return
+    }
+    if (method === "POST" && pathname === "/apiGoogleFonts") {
+        let body = '';
+        req.on('data', chunk => {
+            body += chunk.toString();
         });
+
+        req.on('end', async () => {
+            let pessoa;
+
+            try {
+                pessoa = JSON.parse(body);
+            } catch (err) {
+                res.writeHead(400, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ erro: "JSON inválido" }));
+                return;
+            }
+
+            try {
+                const resposta = await fetch(`https://www.googleapis.com/webfonts/v1/webfonts?key${pessoa.id}`);
+                const responseBody = await resposta.json();
+
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify(responseBody));
+            } catch (err) {
+                res.writeHead(500, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ erro: "Erro ao buscar fontes" }));
+            }
+        });
+
         return;
     }
-
-    if (method === "POST" && pathname === "/ajuda") {
+    if (method === "POST" && pathname === "/cadastro") {
         let bodyPessoa = "";
         req.on('data', chunk => { bodyPessoa += chunk.toString(); });
         req.on('end', () => {
